@@ -82,8 +82,8 @@ balloon_name = 'HAB-2000';
 target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_safe_error = 1000; % [m] disarm if error is larger than this
-max_deadzone_error = 10; % [m] don't actuate if error is smaller than this
-max_deadzone_speed = 0.0; % [m/s] don't actuate if ascent rate is smaller than this
+max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
+max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
 delay_time = 500; % [s] time to wait after launch before starting controller
 delay_altitude = target_altitude-max_safe_error; % [m] altitude to reach before arming
 
@@ -109,14 +109,14 @@ mdot_bleed_noise_power = 0.0001; % multiplied against mdot to emulate variabilit
 % PID settings
 Dump.Kp = 1e-8; % Proportional Gain
 Dump.Ki = 1e-5; % Integral Gain
-Dump.Kd = 0e-3; % Derivative Gain
-Dump.Kn = 1e+0; % Derivative Filter Gain
+Dump.Kd = 1e-3; % Derivative Gain
+Dump.Kn = 1e-1; % Derivative Filter Gain
 Dump.Kb = 0e-1; % Anti Windup Back-calculation Gain
 
 Vent.Kp = 1e-5; % Proportional Gain
 Vent.Ki = 0e-5; % Integral Gain
 Vent.Kd = 1e-3; % Derivative Gain
-Vent.Kn = 1e+0; % Derivative Filter Gain
+Vent.Kn = 1e-1; % Derivative Filter Gain
 Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
 
 pwm_period = 1; %[s] period of the pwm controller
