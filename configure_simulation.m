@@ -79,15 +79,17 @@ initial_position2D = [39.5296, 119.8138]; % latitude in degrees, longitude in de
 balloon_name = 'HAB-2000';
 
 % altitude controller settings
-target_altitude = 240000; % [m] target altitude
+target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 delay_time = 500; % [s] time to wait after launch before starting controller
 delay_altitude = target_altitude; % [m] altitude to reach before arming
 max_safe_error = 500; % [m] disarm if error is larger than this
 max_deadzone_error = 10; % [m] don't actuate if error is smaller than this
+max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
 
 % mass properties
 extra_gas_above_reserve = 0.5; % [kg]
+gas_reserve_buffer_above_equilibruim = 0.001; % [kg]
 payload_dry_mass  = 1.427;  % [kg]
 consumable_mass   = 0.5; % [kg]
 
@@ -100,7 +102,9 @@ parachute_drag_coeff = 1.3;
 % hardware limits
 parachute_open_altitude = 18000; % [m]
 mdot_ballast = 0.001; % [kg/s]
+mdot_ballast_noise_power = 0.0001; % multiplied against mdot to emulate variability
 mdot_bleed = 0.010; % [kg/s]
+mdot_bleed_noise_power = 0.0001; % multiplied against mdot to emulate variability
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% SIMULATION INITIALIZATION %%
 % This is the code that sets up the simulation and kicks it off.
@@ -122,7 +126,7 @@ balloon_drag_coeff = balloon_parameters.spec.drag_coefficient; % coefficient of 
 
 combined_dry_mass = payload_dry_mass+m_balloon;
 gas_for_equilibrium_at_target = gas_for_equilibrium(combined_dry_mass, lift_gas, target_altitude) % [kg]
-reserved_gas_mass = gas_for_equilibrium(combined_dry_mass, lift_gas, min_altitude_limit) % [kg]
+reserved_gas_mass = gas_for_equilibrium(combined_dry_mass, lift_gas, min_altitude_limit) + gas_reserve_buffer_above_equilibruim % [kg]
 recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_mass, lift_gas, balloon_parameters.spec.free_lift_recommended.value) % [kg]
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
@@ -173,11 +177,18 @@ xLP = [LP_altitude; LP_velocity; LP_mgas; LP_mballast]; % linearization state
 yLP = C*xLP; % linearization state mapped to sensors
 
 % PID settings
-Kp = 1e-5; % Proportional Gain
-Ki = 1e-5; % Integral Gain
-Kd = 0e-9; % Derivative Gain
-Kn = 0e-0; % Derivative Filter Gain
-Kb = 1e-0; % Anti Windup Back-calculation Gain
+Dump.Kp = 1e-1; % Proportional Gain
+Dump.Ki = 0e-1; % Integral Gain
+Dump.Kd = 0e-1; % Derivative Gain
+Dump.Kn = 0e-1; % Derivative Filter Gain
+Dump.Kb = 0e-1; % Anti Windup Back-calculation Gain
+
+Vent.Kp = 1e-1; % Proportional Gain
+Vent.Ki = 0e-1; % Integral Gain
+Vent.Kd = 0e-1; % Derivative Gain
+Vent.Kn = 0e-1; % Derivative Filter Gain
+Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
+
 pwm_period = 1; %[s] period of the pwm controller
 
 % % LQR settings
