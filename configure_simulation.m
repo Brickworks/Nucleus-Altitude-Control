@@ -81,11 +81,11 @@ balloon_name = 'HAB-2000';
 % altitude controller settings
 target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
-delay_time = 500; % [s] time to wait after launch before starting controller
-delay_altitude = target_altitude; % [m] altitude to reach before arming
 max_safe_error = 500; % [m] disarm if error is larger than this
 max_deadzone_error = 10; % [m] don't actuate if error is smaller than this
-max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
+max_deadzone_speed = 0.0; % [m/s] don't actuate if ascent rate is smaller than this
+delay_time = 500; % [s] time to wait after launch before starting controller
+delay_altitude = target_altitude-max_safe_error; % [m] altitude to reach before arming
 
 % mass properties
 extra_gas_above_reserve = 0.5; % [kg]
@@ -103,8 +103,24 @@ parachute_drag_coeff = 1.3;
 parachute_open_altitude = 18000; % [m]
 mdot_ballast = 0.001; % [kg/s]
 mdot_ballast_noise_power = 0.0001; % multiplied against mdot to emulate variability
-mdot_bleed = 0.010; % [kg/s]
+mdot_bleed = 0.001; % [kg/s]
 mdot_bleed_noise_power = 0.0001; % multiplied against mdot to emulate variability
+
+% PID settings
+Dump.Kp = 1e-7; % Proportional Gain
+Dump.Ki = 0e-1; % Integral Gain
+Dump.Kd = 1e+2; % Derivative Gain
+Dump.Kn = 1e+0; % Derivative Filter Gain
+Dump.Kb = 0e-1; % Anti Windup Back-calculation Gain
+
+Vent.Kp = 1e-7; % Proportional Gain
+Vent.Ki = 0e-1; % Integral Gain
+Vent.Kd = 1e+2; % Derivative Gain
+Vent.Kn = 1e+0; % Derivative Filter Gain
+Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
+
+pwm_period = 1; %[s] period of the pwm controller
+
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% SIMULATION INITIALIZATION %%
 % This is the code that sets up the simulation and kicks it off.
@@ -175,21 +191,6 @@ LP_mgas = 1.3032; % [kg] linearization point gas mass
 LP_mballast = 0; % [kg] linearization point ballast mass
 xLP = [LP_altitude; LP_velocity; LP_mgas; LP_mballast]; % linearization state
 yLP = C*xLP; % linearization state mapped to sensors
-
-% PID settings
-Dump.Kp = 1e-1; % Proportional Gain
-Dump.Ki = 0e-1; % Integral Gain
-Dump.Kd = 0e-1; % Derivative Gain
-Dump.Kn = 0e-1; % Derivative Filter Gain
-Dump.Kb = 0e-1; % Anti Windup Back-calculation Gain
-
-Vent.Kp = 1e-1; % Proportional Gain
-Vent.Ki = 0e-1; % Integral Gain
-Vent.Kd = 0e-1; % Derivative Gain
-Vent.Kn = 0e-1; % Derivative Filter Gain
-Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
-
-pwm_period = 1; %[s] period of the pwm controller
 
 % % LQR settings
 % B_bleed = [0;0;1;0];
