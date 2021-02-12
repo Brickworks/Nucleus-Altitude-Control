@@ -121,6 +121,11 @@ Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
 
 pwm_period = 1; %[s] period of the pwm controller
 
+% Atmospheric variation - modify the ideal COESA terms with simple noise
+coesa_noise_sample_time = 10; % [s] time between changes in values
+coesa_temperature_variance = 0.001; % [K]
+coesa_pressure_variance = 0.001; % [K]
+coesa_density_variance = 0.001; % [K]
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% SIMULATION INITIALIZATION %%
 % This is the code that sets up the simulation and kicks it off.
