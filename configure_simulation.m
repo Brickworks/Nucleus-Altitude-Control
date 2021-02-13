@@ -123,9 +123,9 @@ pwm_period = 1; %[s] period of the pwm controller
 
 % Atmospheric variation - modify the ideal COESA terms with simple noise
 coesa_noise_sample_time = 10; % [s] time between changes in values
-coesa_temperature_variance = 0.001; % [K]
-coesa_pressure_variance = 0.001; % [K]
-coesa_density_variance = 0.001; % [K]
+coesa_temperature_variance = 0.000; % [K]
+coesa_pressure_variance = 0.000; % [K]
+coesa_density_variance = 0.000; % [K]
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% SIMULATION INITIALIZATION %%
 % This is the code that sets up the simulation and kicks it off.
@@ -149,9 +149,10 @@ combined_dry_mass = payload_dry_mass+m_balloon;
 gas_for_equilibrium_at_target = gas_for_equilibrium(combined_dry_mass, lift_gas, target_altitude) % [kg]
 reserved_gas_mass = gas_for_equilibrium(combined_dry_mass, lift_gas, min_altitude_limit) + gas_reserve_buffer_above_equilibruim % [kg]
 recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_mass, lift_gas, balloon_parameters.spec.free_lift_recommended.value) % [kg]
+requested_gas_budget = extra_gas_above_reserve + reserved_gas_mass
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
-    extra_gas_above_reserve + reserved_gas_mass, ...
+    requested_gas_budget, ...
     recommended_fill_mass]) % [kg]
 if reserved_gas_mass > balloon_fill_mass
     error("reserved gas must be a fraction of balloon fill mass");
@@ -185,8 +186,8 @@ C = [1 0 0 0;
      0 1 0 0;
      0 0 0 9.80665];
 D=0;
-sys = ss(A,B,C,D) % continuous time
-sysd = c2d(sys,dt) % discrete time
+sys = ss(A,B,C,D); % continuous time
+sysd = c2d(sys,dt); % discrete time
 X0 = [initial_altitude, initial_velocity, balloon_fill_mass, consumable_mass]; % initial states
 R = diag([BMP388_altitude_variance MAXM8_altitude_variance MAXM8_velocity_variance TAL220_load_variance]); % measurement noise
 Q = diag([1e-3; 1e-3; 1; 1]); % process noise
