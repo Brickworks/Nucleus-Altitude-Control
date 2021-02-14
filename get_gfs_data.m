@@ -1,4 +1,4 @@
-function [gfsIsobaricDataCubes isobaricIndex latIndex lonIndex, gfsVarIndex] = get_gfs_data(toiDatetimeString, aoiLatLong)
+function [gfsIsobaricDataCubes latIndex lonIndex, gfsVarIndex] = get_gfs_data(toiDatetimeString, aoiLatLong)
 %GET_GFS_DATA Download a Global Forecast System dataset for the time and
 % place of interest and returns a dataset indexed by isobaric pressure.
 %
@@ -51,7 +51,7 @@ websave(cachePath, requestUrl);
 %% Parse data
 gribtable = table();
 grib = ncgeodataset(cachePath);
-[gfsIsobaricDataCubes isobaricIndex latIndex lonIndex gfsVarIndex] = splitGeodataset(grib);
+[gfsIsobaricDataCubes latIndex lonIndex gfsVarIndex] = splitGeodataset(grib);
 end
 
 function requestUrl = buildGFSQuery(toiDatetimeObj, aoiLatLong)
@@ -103,7 +103,7 @@ requestUrl = strcat( ...
     sprintf('&dir=%s', gfsDir));
 end
 
-function cellArray = extractDataFromGrib(grib, var_list)
+function cellArray = extractAxisFromGrib(grib, var_list)
 cellArray = cell(size(var_list));
 for i=1:length(var_list)
     var = var_list{i};
@@ -114,6 +114,24 @@ for i=1:length(var_list)
     % eliminate (unused) time dimension
     vardata = squeeze(vardata);
     cellArray{i} = vardata;
+end
+end
+
+function dataTables = extractDataFromGrib(grib, var_list, index_list)
+dataTables = cell(length(var_list),2);
+for i=1:length(var_list)
+    var = var_list{i};
+    % get table from dataset
+    vardata_obj = grib.geovariable(var);
+    % get isobar index for var
+    index_name = vardata_obj.axes(ismember(vardata_obj.axes, {'isobaric', 'isobaric1', 'isobaric2'}));
+    varIndex = index_list(ismember(index_list(:,1),index_name),2);
+    dataTables(i,1) = varIndex;
+    % extract data from geovar object
+    varData = double(vardata_obj.data(:));
+    % eliminate (unused) time dimension
+    varData = squeeze(varData);
+    dataTables(i,2) = {varData};
 end
 end
 
@@ -128,22 +146,22 @@ function abbrev = getAbbrevFromGeovariable(geovar)
     abbrev = geovar.attribute('abbreviation');
 end
 
-function [varDataCubes isobaricIndex latIndex lonIndex varIndex] = splitGeodataset(grib)
+function [varDataCubes latIndex lonIndex varIndex] = splitGeodataset(grib)
 gfs_variables = grib.variables;
-gfs_axes = grib.geovariable(gfs_variables{1}).axes; % pick any geovariable
+% gfs_axes = grib.geovariable(gfs_variables{1}).axes; % pick any geovariable
+gfs_axes = {'time', 'lat', 'lon', 'isobaric', 'isobaric1', 'isobaric2'};
 % separate axes from data
 gfs_variables = setdiff(gfs_variables, gfs_axes);
 % ignore time axis
 gfs_axes = gfs_axes(~ismember(gfs_axes,'time'));
 
 % extract index arrays from grib
-indices = extractDataFromGrib(grib, gfs_axes);
-isobaricIndex = indices{1};
-latIndex = indices{2};
-lonIndex = indices{3};
+indices = [gfs_axes' extractAxisFromGrib(grib, gfs_axes)'];
+latIndex = indices{1,2}; % export lat index array
+lonIndex = indices{2,2}; % export lon index array
 
 % extract isobaric x lat x lon data from dataset
-varDataCubes = extractDataFromGrib(grib, gfs_variables);
+varDataCubes = extractDataFromGrib(grib, gfs_variables, indices);
 
 varIndex = cell(size(gfs_variables));
 for i=1:length(gfs_variables)
