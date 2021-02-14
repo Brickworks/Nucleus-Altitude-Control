@@ -67,14 +67,16 @@
 %   Kb                          Gain applied to the anti-windup
 %                               back-calculation.
 % -------------------------------------------------------------------------
-
+path_to_nctoolbox = '../nctoolbox-1.1.0';
 path_to_balloon_library = './balloon_library';
 dt = 0.01; % [s] simulation step time
 
 % start location: Reno, NV
+initial_latitude = 39.5296; % [deg] initial latitude
+initial_longitude = 119.8138; % [deg] initial longitude
 initial_altitude = 1373; % [m] initial altitude above sea level
 initial_velocity = 0; % [m/s] initial vertical velocity
-initial_position2D = [39.5296, 119.8138]; % latitude in degrees, longitude in degrees
+initial_time = '2021-02-11 17:00:00'; % UTC time
 
 balloon_name = 'HAB-2000';
 
@@ -121,16 +123,31 @@ Vent.Kb = 0e-1; % Anti Windup Back-calculation Gain
 
 pwm_period = 1; %[s] period of the pwm controller
 
-% Atmospheric variation - modify the ideal COESA terms with simple noise
-coesa_noise_sample_time = 10; % [s] time between changes in values
-coesa_temperature_variance = 0.000; % [K]
-coesa_pressure_variance = 0.000; % [K]
-coesa_density_variance = 0.000; % [K]
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %% SIMULATION INITIALIZATION %%
 % This is the code that sets up the simulation and kicks it off.
 % Do not change anything below this line!
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+% Initialize weather data
+addpath(path_to_nctoolbox);
+setup_nctoolbox;
+
+gfs_latlon_bounding_box = [-125 -66, 50, 24]; % continental USA
+[gfsIsobaricDataCubes, isobaricIndex, latIndex, lonIndex, gfsVarIndex] = get_gfs_data(initial_time, gfs_latlon_bounding_box);
+altitudeVsPressure = gfsIsobaricDataCubes{ismember(gfsVarIndex, 'HGT')};
+temperatureVsPressure = gfsIsobaricDataCubes{ismember(gfsVarIndex, 'TMP')};
+
+% atmophereLookupTable = table();
+% atmophereLookupTable.isobaric = isobaricIndex;
+% for k=1:length(gfsVarIndex)
+%     name = gfsVarIndex{k};
+%     column = cell(size(isobaricIndex));
+%     for i=1:length(isobaricIndex)
+%         column{i} = squeeze(gfsIsobaricDataCubes{k}(i,:,:));
+%     end
+%     atmophereLookupTable.(name) = column;
+% end
 
 % Import balloon parameters
 addpath(path_to_balloon_library); % import balloon configuration files
