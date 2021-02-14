@@ -73,7 +73,7 @@ dt = 0.01; % [s] simulation step time
 
 % start location: Reno, NV
 initial_latitude = 39.5296; % [deg] initial latitude
-initial_longitude = 119.8138; % [deg] initial longitude
+initial_longitude = -119.8138; % [deg] initial longitude
 initial_altitude = 1373; % [m] initial altitude above sea level
 initial_velocity = 0; % [m/s] initial vertical velocity
 initial_time = '2021-02-11 17:00:00'; % UTC time
@@ -137,6 +137,17 @@ gfs_latlon_bounding_box = [-125 -66, 50, 24]; % continental USA
 [gfsIsobaricDataCubes, isobaricIndex, latIndex, lonIndex, gfsVarIndex] = get_gfs_data(initial_time, gfs_latlon_bounding_box);
 altitudeVsPressure = gfsIsobaricDataCubes{ismember(gfsVarIndex, 'HGT')};
 temperatureVsPressure = gfsIsobaricDataCubes{ismember(gfsVarIndex, 'TMP')};
+% only consider the lat long air column
+altitudeVsPressure_latlon = nan(size(isobaricIndex));
+temperatureVsPressure_latlon = nan(size(isobaricIndex));
+for i=1:length(isobaricIndex)
+    altitudeVsPressure_latlon(i) = interp2(lonIndex,latIndex,squeeze(altitudeVsPressure(i,:,:)),initial_longitude,initial_latitude);
+    temperatureVsPressure_latlon(i) = interp2(lonIndex,latIndex,squeeze(temperatureVsPressure(i,:,:)),initial_longitude,initial_latitude);
+end
+% interpolate across altitude
+interpAltitude = 1:40000;
+pressureVsAltitude = interp1(isobaricIndex,altitudeVsPressure_latlon,interpAltitude, 'linear', 'extrap');
+temperatureVsAltitude = interp1(isobaricIndex,temperatureVsPressure_latlon,interpAltitude, 'linear', 'extrap');
 
 % atmophereLookupTable = table();
 % atmophereLookupTable.isobaric = isobaricIndex;
@@ -160,23 +171,25 @@ burst_volume = balloon_parameters.spec.volume_burst.value; % [m^3] Mission ends 
 burst_altitude = balloon_parameters.spec.altitude_burst.value; % [m] Mission ends if altitude is above this value! 
 release_volume = balloon_parameters.spec.volume_release.value; % [m^3]
 M = molar_mass(lift_gas); % [kg/mol] molar mass of lifting gas
+Mair = molar_mass('air'); % [kg/mol] molar mass of air
 balloon_drag_coeff = balloon_parameters.spec.drag_coefficient; % coefficient of drag
 
 combined_dry_mass = payload_dry_mass+m_balloon;
 gas_for_equilibrium_at_target = gas_for_equilibrium(combined_dry_mass, lift_gas, target_altitude) % [kg]
-reserved_gas_mass = gas_for_equilibrium(combined_dry_mass, lift_gas, min_altitude_limit) + gas_reserve_buffer_above_equilibruim % [kg]
+reserved_gas_mass = 0;%gas_for_equilibrium(combined_dry_mass, lift_gas, min_altitude_limit) + gas_reserve_buffer_above_equilibruim % [kg]
 recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_mass, lift_gas, balloon_parameters.spec.free_lift_recommended.value) % [kg]
 requested_gas_budget = extra_gas_above_reserve + reserved_gas_mass
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
-    requested_gas_budget, ...
-    recommended_fill_mass]) % [kg]
-if reserved_gas_mass > balloon_fill_mass
-    error("reserved gas must be a fraction of balloon fill mass");
-end
-if balloon_fill_mass < calculate_required_gas(combined_dry_mass+consumable_mass, lift_gas, initial_altitude)
-    error("not enough gas to get off the ground!");
-end
+%     recommended_fill_mass, ...
+    requested_gas_budget]) % [kg]
+
+% if reserved_gas_mass > balloon_fill_mass
+%     error("reserved gas must be a fraction of balloon fill mass");
+% end
+% if balloon_fill_mass < calculate_required_gas(combined_dry_mass+consumable_mass, lift_gas, initial_altitude)
+%     error("not enough gas to get off the ground!");
+% end
 
 % sensor models
 BMP388_pressure_variance = 1.2^2; % datasheet accuracy: 1.2 Pa RMS

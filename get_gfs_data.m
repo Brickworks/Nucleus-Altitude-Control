@@ -20,6 +20,10 @@ function [gfsIsobaricDataCubes isobaricIndex latIndex lonIndex, gfsVarIndex] = g
 %        550 mb 500 mb
 %        450 mb 400 mb
 %        350 mb 300 mb
+%        250 mb 200 mb
+%        150 mb 100 mb
+%         70 mb  50 mb  40 mb  30 mb  20 mb
+%         15 mb  10  mb  7 mb   5 mb   3 mb
 %       
 %   Variables:
 %       HGT (geopotential height, meters)
@@ -69,7 +73,7 @@ gfsDir = sprintf('%s%04i%02i%02i%s%02i', ...
     hour_code_prefix, hour_code);
 
 % prepare isobaric layer query
-isobar_layers = [1000, 975:-25:900, 850:-50:300];
+isobar_layers = [1000,975:-25:900,850:-50:100,70,50:-10:20,15:-5:10,7:-2:3];
 isobar_query_strings = cell(size(isobar_layers));
 for i=1:length(isobar_layers)
     isobar_query_strings(i) = {sprintf('&lev_%g_mb=on', isobar_layers(i))};
