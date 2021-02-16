@@ -81,7 +81,7 @@ initial_time = '2021-02-11 17:00:00'; % UTC time
 balloon_name = 'HAB-1200';
 
 % altitude controller settings
-target_altitude = 20000; % [m] target altitude
+target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_safe_error = 1000; % [m] disarm if error is larger than this
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
@@ -221,7 +221,7 @@ recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_m
 requested_gas_budget = extra_gas_above_reserve + reserved_gas_mass
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
-%     recommended_fill_mass, ...
+    recommended_fill_mass, ...
     requested_gas_budget]) % [kg]
 
 % if reserved_gas_mass > balloon_fill_mass
