@@ -78,10 +78,10 @@ initial_altitude = 1373; % [m] initial altitude above sea level
 initial_velocity = 0; % [m/s] initial vertical velocity
 initial_time = '2021-02-11 17:00:00'; % UTC time
 
-balloon_name = 'HAB-2000';
+balloon_name = 'HAB-1200';
 
 % altitude controller settings
-target_altitude = 24000; % [m] target altitude
+target_altitude = 20000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_safe_error = 1000; % [m] disarm if error is larger than this
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
@@ -90,7 +90,7 @@ delay_time = 500; % [s] time to wait after launch before starting controller
 delay_altitude = target_altitude-max_safe_error; % [m] altitude to reach before arming
 
 % mass properties
-extra_gas_above_reserve = 0.5; % [kg]
+extra_gas_above_reserve = 0.2; % [kg]
 gas_reserve_buffer_above_equilibruim = 0.001; % [kg]
 payload_dry_mass  = 1.427;  % [kg]
 consumable_mass   = 0.5; % [kg]
@@ -143,35 +143,55 @@ uWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'UGRD'),:); % [m/s]
 vWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'VGRD'),:); % [m/s]
 zWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'DZDT'),:); % [m/s]
 
-% only consider the lat long air column
-altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},initial_latitude,initial_longitude);
-temperatureVsPressure_latlon = interp3d_at_coordinate(temperatureVsPressure{2},latIndex,lonIndex,temperatureVsPressure{1},initial_latitude,initial_longitude);
-zWindVsPressure_latlon = interp3d_at_coordinate(zWindVsPressure{2},latIndex,lonIndex,zWindVsPressure{1},initial_latitude,initial_longitude);
-uWindVsPressure_latlon = interp3d_at_coordinate(uWindVsPressure{2},latIndex,lonIndex,uWindVsPressure{1},initial_latitude,initial_longitude);
-vWindVsPressure_latlon = interp3d_at_coordinate(vWindVsPressure{2},latIndex,lonIndex,vWindVsPressure{1},initial_latitude,initial_longitude);
+interpAltitude = linspace(1,40000,length(altitudeVsPressure{1}));
 
+pressureVsAltitude = nan(length(latIndex),length(lonIndex),length(interpAltitude));
+for j=1:length(latIndex)
+    for k = 1:length(lonIndex)
+        altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},latIndex(j),lonIndex(k));
+        pressureVsAltitude(j,k,:) =  interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
+    end
+end
 
-% interpolate across altitude
-interpAltitude = 1:40000;
-pressureVsAltitude = interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
-temperatureVsAltitude = interp1(altitudeVsPressure_latlon,temperatureVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [K]
-zWindVsAltitude = interp1( ...
-    interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},zWindVsPressure{1},'linear','extrap'), ...
-    zWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
-uWindVsAltitude = interp1( ...
-    interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},uWindVsPressure{1},'linear','extrap'), ...
-    uWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
-vWindVsAltitude = interp1( ...
-    interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},vWindVsPressure{1},'linear','extrap'), ...
-    vWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+% % only consider the lat long air column
+% altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},initial_latitude,initial_longitude);
+% temperatureVsPressure_latlon = interp3d_at_coordinate(temperatureVsPressure{2},latIndex,lonIndex,temperatureVsPressure{1},initial_latitude,initial_longitude);
+% zWindVsPressure_latlon = interp3d_at_coordinate(zWindVsPressure{2},latIndex,lonIndex,zWindVsPressure{1},initial_latitude,initial_longitude);
+% uWindVsPressure_latlon = interp3d_at_coordinate(uWindVsPressure{2},latIndex,lonIndex,uWindVsPressure{1},initial_latitude,initial_longitude);
+% vWindVsPressure_latlon = interp3d_at_coordinate(vWindVsPressure{2},latIndex,lonIndex,vWindVsPressure{1},initial_latitude,initial_longitude);
 
-% Compare US standard atmosphere to GFS data
+% pressureVsAltitude = interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
+% temperatureVsAltitude = interp1(altitudeVsPressure_latlon,temperatureVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [K]
+% zWindVsAltitude = interp1( ...
+%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},zWindVsPressure{1},'linear','extrap'), ...
+%     zWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+% uWindVsAltitude = interp1( ...
+%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},uWindVsPressure{1},'linear','extrap'), ...
+%     uWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+% vWindVsAltitude = interp1( ...
+%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},vWindVsPressure{1},'linear','extrap'), ...
+%     vWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+
+% reshape arrays into index by lat x lon x pressure
+% % [latGrid, lonGrid] = meshgrid(lonIndex, latIndex);
+% % latGrid = repmat(latGrid,1,1,length(altitudeVsPressure{1}));
+% % lonGrid = repmat(lonGrid,1,1,length(altitudeVsPressure{1}));
+% % pressureGrid = bsxfun(@times, ...
+% %     ones(length(latIndex),length(lonIndex),length(altitudeVsPressure{1})), ...
+% %     reshape(altitudeVsPressure{1},1,1,[]));
+% % altitudeGrid = reshapeZXYtoXYZ(altitudeVsPressure{2});
+% % altitudeGridCoords = [latGrid(:) lonGrid(:) altitudeGrid(:)];
+
+% % Compare US standard atmosphere to GFS data for debug purposes
 % [T, a, P, rho] = atmoscoesa(interpAltitude);
 % figure(1); 
 % title(sprintf('Pressure (%g, %g)',initial_latitude,initial_longitude));
 % xlabel('Altitude'); ylabel('Pa');
-% hold on; 
-% plot(interpAltitude,P,interpAltitude,pressureVsAltitude); 
+% vector = nan(size(interpAltitude));
+% for i=1:length(temperatureVsPressure{1})
+%     vector(i) = interp2(lonIndex,latIndex,squeeze(temperatureVsPressure{2}(i,:,:)),initial_longitude,initial_latitude);
+% end
+% plot(interpAltitude,T,interpAltitude,vector); 
 % legend('COESA',sprintf('GFS %s',initial_time));
 % figure(2);
 % title(sprintf('Temperature (%g, %g)',initial_latitude,initial_longitude));
@@ -258,4 +278,4 @@ yLP = C*xLP; % linearization state mapped to sensors
 %% SIMULATION START %%
 % Start the simulation!
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-% tout = sim('ascent_simulation');
+% out = sim('ascent_simulation');
