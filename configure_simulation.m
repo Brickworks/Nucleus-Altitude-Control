@@ -70,6 +70,7 @@
 path_to_nctoolbox = '../nctoolbox-1.1.0';
 path_to_balloon_library = './balloon_library';
 dt = 0.01; % [s] simulation step time
+use_std_atmo = false; % if true, use COESA. else retrieve weather from GFS.
 
 % start location: Reno, NV
 initial_latitude = 39.5296; % [deg] initial latitude
@@ -83,11 +84,10 @@ balloon_name = 'HAB-1200';
 % altitude controller settings
 target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
-max_safe_error = 1000; % [m] disarm if error is larger than this
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
 max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
 delay_time = 500; % [s] time to wait after launch before starting controller
-delay_altitude = target_altitude-max_safe_error; % [m] altitude to reach before arming
+delay_altitude = target_altitude-5000; % [m] altitude to reach before arming
 
 % mass properties
 extra_gas_above_reserve = 0.2; % [kg]
@@ -129,76 +129,63 @@ pwm_period = 1; %[s] period of the pwm controller
 % Do not change anything below this line!
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-% Initialize weather data
-addpath(path_to_nctoolbox);
-setup_nctoolbox;
+if ~use_std_atmo
+    % Initialize weather data
+    addpath(path_to_nctoolbox);
+    setup_nctoolbox;
 
-% Create atmosphere lookup tables
-gfs_latlon_bounding_box = [-125 -66, 50, 24]; % continental USA
-[gfsIsobaricDataCubes, latIndex, lonIndex, gfsVarIndex] = get_gfs_data(initial_time, gfs_latlon_bounding_box);
+    % Create atmosphere lookup tables
+    gfs_latlon_bounding_box = [-125 -66, 50, 24]; % continental USA
+    [gfsIsobaricDataCubes, latIndex, lonIndex, gfsVarIndex] = get_gfs_data(initial_time, gfs_latlon_bounding_box);
 
-altitudeVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'HGT'),:); % [m]
-temperatureVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'TMP'),:); % [K]
-uWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'UGRD'),:); % [m/s]
-vWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'VGRD'),:); % [m/s]
-zWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'DZDT'),:); % [m/s]
+    altitudeVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'HGT'),:); % [m]
+    temperatureVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'TMP'),:); % [K]
+    uWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'UGRD'),:); % [m/s]
+    vWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'VGRD'),:); % [m/s]
+    zWindVsPressure = gfsIsobaricDataCubes(ismember(gfsVarIndex, 'DZDT'),:); % [m/s]
 
-interpAltitude = linspace(1,40000,length(altitudeVsPressure{1}));
+    interpAltitude = linspace(1,40000,length(altitudeVsPressure{1}));
 
-pressureVsAltitude = nan(length(latIndex),length(lonIndex),length(interpAltitude));
-for j=1:length(latIndex)
-    for k = 1:length(lonIndex)
-        altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},latIndex(j),lonIndex(k));
-        pressureVsAltitude(j,k,:) =  interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
+    pressureVsAltitude = nan(length(latIndex),length(lonIndex),length(interpAltitude));
+    for j=1:length(latIndex)
+        for k = 1:length(lonIndex)
+            altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},latIndex(j),lonIndex(k));
+            pressureVsAltitude(j,k,:) =  interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
+        end
     end
+
+    % only consider the lat long air column
+    altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},initial_latitude,initial_longitude);
+    temperatureVsPressure_latlon = interp3d_at_coordinate(temperatureVsPressure{2},latIndex,lonIndex,temperatureVsPressure{1},initial_latitude,initial_longitude);
+    zWindVsPressure_latlon = interp3d_at_coordinate(zWindVsPressure{2},latIndex,lonIndex,zWindVsPressure{1},initial_latitude,initial_longitude);
+    uWindVsPressure_latlon = interp3d_at_coordinate(uWindVsPressure{2},latIndex,lonIndex,uWindVsPressure{1},initial_latitude,initial_longitude);
+    vWindVsPressure_latlon = interp3d_at_coordinate(vWindVsPressure{2},latIndex,lonIndex,vWindVsPressure{1},initial_latitude,initial_longitude);
+
+    pressureVsAltitude_latlon = interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
+    temperatureVsAltitude = interp1(altitudeVsPressure_latlon,temperatureVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [K]
+    zWindVsAltitude = interp1( ...
+        interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},zWindVsPressure{1},'linear','extrap'), ...
+        zWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+    uWindVsAltitude = interp1( ...
+        interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},uWindVsPressure{1},'linear','extrap'), ...
+        uWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+    vWindVsAltitude = interp1( ...
+        interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},vWindVsPressure{1},'linear','extrap'), ...
+        vWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
+
+    % Compare US standard atmosphere to GFS data for debug purposes
+    [T, a, P, rho] = atmoscoesa(interpAltitude);
+    figure(1); 
+    plot(interpAltitude,P,interpAltitude,pressureVsAltitude_latlon);
+    title(sprintf('Pressure (%g, %g)',initial_latitude,initial_longitude));
+    xlabel('Altitude'); ylabel('Pa'); 
+    legend('COESA',sprintf('GFS %s',initial_time));
+    figure(2);
+    plot(interpAltitude,T,interpAltitude,temperatureVsAltitude); 
+    title(sprintf('Temperature (%g, %g)',initial_latitude,initial_longitude));
+    xlabel('Altitude'); ylabel('K');
+    legend('COESA',sprintf('GFS %s',initial_time));
 end
-
-% % only consider the lat long air column
-% altitudeVsPressure_latlon = interp3d_at_coordinate(altitudeVsPressure{2},latIndex,lonIndex,altitudeVsPressure{1},initial_latitude,initial_longitude);
-% temperatureVsPressure_latlon = interp3d_at_coordinate(temperatureVsPressure{2},latIndex,lonIndex,temperatureVsPressure{1},initial_latitude,initial_longitude);
-% zWindVsPressure_latlon = interp3d_at_coordinate(zWindVsPressure{2},latIndex,lonIndex,zWindVsPressure{1},initial_latitude,initial_longitude);
-% uWindVsPressure_latlon = interp3d_at_coordinate(uWindVsPressure{2},latIndex,lonIndex,uWindVsPressure{1},initial_latitude,initial_longitude);
-% vWindVsPressure_latlon = interp3d_at_coordinate(vWindVsPressure{2},latIndex,lonIndex,vWindVsPressure{1},initial_latitude,initial_longitude);
-
-% pressureVsAltitude = interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},interpAltitude, 'linear', 'extrap')'; % [Pa]
-% temperatureVsAltitude = interp1(altitudeVsPressure_latlon,temperatureVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [K]
-% zWindVsAltitude = interp1( ...
-%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},zWindVsPressure{1},'linear','extrap'), ...
-%     zWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
-% uWindVsAltitude = interp1( ...
-%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},uWindVsPressure{1},'linear','extrap'), ...
-%     uWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
-% vWindVsAltitude = interp1( ...
-%     interp1(altitudeVsPressure_latlon,altitudeVsPressure{1},vWindVsPressure{1},'linear','extrap'), ...
-%     vWindVsPressure_latlon,interpAltitude, 'linear', 'extrap'); % [m/s]
-
-% reshape arrays into index by lat x lon x pressure
-% % [latGrid, lonGrid] = meshgrid(lonIndex, latIndex);
-% % latGrid = repmat(latGrid,1,1,length(altitudeVsPressure{1}));
-% % lonGrid = repmat(lonGrid,1,1,length(altitudeVsPressure{1}));
-% % pressureGrid = bsxfun(@times, ...
-% %     ones(length(latIndex),length(lonIndex),length(altitudeVsPressure{1})), ...
-% %     reshape(altitudeVsPressure{1},1,1,[]));
-% % altitudeGrid = reshapeZXYtoXYZ(altitudeVsPressure{2});
-% % altitudeGridCoords = [latGrid(:) lonGrid(:) altitudeGrid(:)];
-
-% % Compare US standard atmosphere to GFS data for debug purposes
-% [T, a, P, rho] = atmoscoesa(interpAltitude);
-% figure(1); 
-% title(sprintf('Pressure (%g, %g)',initial_latitude,initial_longitude));
-% xlabel('Altitude'); ylabel('Pa');
-% vector = nan(size(interpAltitude));
-% for i=1:length(temperatureVsPressure{1})
-%     vector(i) = interp2(lonIndex,latIndex,squeeze(temperatureVsPressure{2}(i,:,:)),initial_longitude,initial_latitude);
-% end
-% plot(interpAltitude,T,interpAltitude,vector); 
-% legend('COESA',sprintf('GFS %s',initial_time));
-% figure(2);
-% title(sprintf('Temperature (%g, %g)',initial_latitude,initial_longitude));
-% xlabel('Altitude'); ylabel('K');
-% hold on; 
-% plot(interpAltitude,T,interpAltitude,temperatureVsAltitude); 
-% legend('COESA',sprintf('GFS %s',initial_time));
 
 % Import balloon parameters
 addpath(path_to_balloon_library); % import balloon configuration files
@@ -221,7 +208,7 @@ recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_m
 requested_gas_budget = extra_gas_above_reserve + reserved_gas_mass
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
-    recommended_fill_mass, ...
+%     recommended_fill_mass, ...
     requested_gas_budget]) % [kg]
 
 % if reserved_gas_mass > balloon_fill_mass
