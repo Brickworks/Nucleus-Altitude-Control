@@ -86,8 +86,9 @@ target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
 max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
+max_allowed_error = 1000; % [m] only allow control if altitude error is smaller than this
 delay_time = 500; % [s] time to wait after launch before starting controller
-delay_altitude = target_altitude-5000; % [m] altitude to reach before arming
+delay_altitude = target_altitude-max_allowed_error; % [m] altitude to reach before arming
 
 % mass properties
 extra_gas_above_reserve = 0.2; % [kg]
