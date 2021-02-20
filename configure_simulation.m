@@ -186,6 +186,19 @@ if ~use_std_atmo
     title(sprintf('Temperature (%g, %g)',initial_latitude,initial_longitude));
     xlabel('Altitude'); ylabel('K');
     legend('COESA',sprintf('GFS %s',initial_time));
+else
+    % initialize placeholders for lookup tables
+    placeholder_index_asc = [1 2];
+    placeholder_index_desc = [2 1];
+    placeholder_datacube = zeros(2,2,2);
+    pressureVsAltitude = placeholder_datacube; % [m]
+    temperatureVsPressure = {placeholder_index_desc, placeholder_datacube}; % [K]
+    uWindVsPressure = {placeholder_index_desc, placeholder_datacube}; % [m/s]
+    vWindVsPressure = {placeholder_index_desc, placeholder_datacube}; % [m/s]
+    zWindVsPressure = {placeholder_index_desc, placeholder_datacube}; % [m/s]
+    interpAltitude = placeholder_index_asc;
+    latIndex = placeholder_index_asc;
+    lonIndex = placeholder_index_asc;
 end
 
 % Import balloon parameters
