@@ -41,10 +41,9 @@ function [gfsIsobaricDataCubes latIndex lonIndex, gfsVarIndex] = get_gfs_data(to
 %       https://www.giss.nasa.gov/tools/panoply/download/
 
 %% download GRiB2 data from GFS
-datetime_obj = datetime(toiDatetimeString);
-requestUrl = buildGFSQuery(datetime_obj, aoiLatLong);
+[requestUrl, forecast_hr] = buildGFSQuery(toiDatetimeString, aoiLatLong);
 cacheDir = 'gfs_cache'; % Directory to store GFS data files
-cacheFile = sprintf('%s_gfs_0p25.f000', datestr(datetime_obj, 'yyyymmdd-HHMMSS'));
+cacheFile = sprintf('%s_gfs_0p25.f%0.3i', datestr(datetime(toiDatetimeString), 'yyyymmdd-HHMMSS'), forecast_hr);
 cachePath = fullfile(cacheDir, cacheFile);
 websave(cachePath, requestUrl);
 
@@ -54,16 +53,24 @@ grib = ncgeodataset(cachePath);
 [gfsIsobaricDataCubes latIndex lonIndex gfsVarIndex] = splitGeodataset(grib);
 end
 
-function requestUrl = buildGFSQuery(toiDatetimeObj, aoiLatLong)
-baseUrl = 'https://nomads.ncep.noaa.gov/cgi-bin/';
-gfsDataset = 'filter_gfs_0p25.pl';
-gfsFile = 'gfs.t00z.pgrb2.0p25.f000';
+function [gfsDir, base_hr, forecast_hr] = datetime2gfsdate(toiDatetimeString)
+datetime_obj = datetime(toiDatetimeString);
 
-% get the GFS directory from date and time
-% find nearest hour code
+now_dt = datetime(now,'ConvertFrom','datenum');
+if datetime_obj > now_dt
+    % future
+    toiDatetimeObj = now_dt;
+else
+    % past
+    toiDatetimeObj = datetime_obj;
+end
+
+% find nearest hour code without going in the future
 hour_codes = [00, 06, 12, 18];
-[~,~,idx]=unique(round(abs(hour_codes-toiDatetimeObj.Hour)),'stable');
-hour_code=hour_codes(idx==1);
+time_to_hour_codes = unique(round(toiDatetimeObj.Hour-hour_codes),'stable');
+time_to_hour_codes(time_to_hour_codes<0)=nan; % don't use time in the future
+[~,idx]=sort(time_to_hour_codes);
+hour_code=hour_codes(idx(1));
 % assemble GFS dataset directory string
 date_code_prefix = '%2Fgfs.';
 hour_code_prefix = '%2F';
@@ -71,6 +78,18 @@ gfsDir = sprintf('%s%04i%02i%02i%s%02i', ...
     date_code_prefix, ...
     toiDatetimeObj.Year, toiDatetimeObj.Month, toiDatetimeObj.Day, ...
     hour_code_prefix, hour_code);
+
+% find the "forecast hour" - time of interest after base dataset date
+gfsDatasetBaseTime = datetime(toiDatetimeObj.Year, toiDatetimeObj.Month, toiDatetimeObj.Day, hour_code, 0, 0);
+base_hr = hour_code;
+forecast_hr = hours(datetime_obj-gfsDatasetBaseTime);
+end
+
+function [requestUrl, forecast_hr] = buildGFSQuery(toiDatetimeString, aoiLatLong, forecast_hr)
+[gfsDir, base_hr, forecast_hr] = datetime2gfsdate(toiDatetimeString);
+baseUrl = 'https://nomads.ncep.noaa.gov/cgi-bin/';
+gfsDataset = 'filter_gfs_0p25.pl';
+gfsFile = sprintf('gfs.t%0.2iz.pgrb2.0p25.f%0.3i',base_hr,forecast_hr);
 
 % prepare isobaric layer query
 isobar_layers = [1000,975:-25:900,850:-50:100,70,50:-10:20,15:-5:10,7:-2:3];

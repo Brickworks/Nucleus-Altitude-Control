@@ -77,12 +77,12 @@ initial_latitude = 39.5296; % [deg] initial latitude
 initial_longitude = -119.8138; % [deg] initial longitude
 initial_altitude = 1373; % [m] initial altitude above sea level
 initial_velocity = 0; % [m/s] initial vertical velocity
-initial_time = '2021-02-11 17:00:00'; % UTC time
+initial_time = '2021-02-21 17:00:00'; % UTC time
 
 balloon_name = 'HAB-1200';
 
 % altitude controller settings
-target_altitude = 24000; % [m] target altitude
+target_altitude = 240000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
 max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
@@ -136,6 +136,7 @@ if ~use_std_atmo
     setup_nctoolbox;
 
     % Create atmosphere lookup tables
+    disp('Getting data from GFS...');
     gfs_latlon_bounding_box = [-125 -66, 50, 24]; % continental USA
     [gfsIsobaricDataCubes, latIndex, lonIndex, gfsVarIndex] = get_gfs_data(initial_time, gfs_latlon_bounding_box);
 
@@ -147,6 +148,7 @@ if ~use_std_atmo
 
     interpAltitude = linspace(1,40000,length(altitudeVsPressure{1}));
 
+    disp('Interpolating pressure vs altitude...');
     pressureVsAltitude = nan(length(latIndex),length(lonIndex),length(interpAltitude));
     for j=1:length(latIndex)
         for k = 1:length(lonIndex)
@@ -222,7 +224,7 @@ recommended_fill_mass = get_recommended_fill_mass(combined_dry_mass+consumable_m
 requested_gas_budget = extra_gas_above_reserve + reserved_gas_mass
 balloon_fill_mass = max([ ...
     gas_for_equilibrium_at_target, ...
-%     recommended_fill_mass, ...
+    recommended_fill_mass, ...
     requested_gas_budget]) % [kg]
 
 % if reserved_gas_mass > balloon_fill_mass
