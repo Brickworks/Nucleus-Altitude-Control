@@ -54,6 +54,8 @@ grib = ncgeodataset(cachePath);
 end
 
 function [gfsDir, base_hr, forecast_hr] = datetime2gfsdate(toiDatetimeString)
+% GFS data is available hourly for 24 hours after the dataset base time
+% and every 3 hours after that for 16 days after the base time
 datetime_obj = datetime(toiDatetimeString);
 
 now_dt = datetime(now,'ConvertFrom','datenum');
