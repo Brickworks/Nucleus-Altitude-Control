@@ -77,21 +77,21 @@ initial_latitude = 39.5296; % [deg] initial latitude
 initial_longitude = -119.8138; % [deg] initial longitude
 initial_altitude = 1373; % [m] initial altitude above sea level
 initial_velocity = 0; % [m/s] initial vertical velocity
-initial_time = '2021-02-21 17:00:00'; % UTC time
+initial_time = '2021-02-22 17:00:00'; % UTC time
 
 balloon_name = 'HAB-1200';
 
 % altitude controller settings
-target_altitude = 240000; % [m] target altitude
+target_altitude = 24000; % [m] target altitude
 min_altitude_limit = 15000; % [m] abort if below this altitude after starting control
 max_deadzone_error = 100; % [m] don't actuate if error is smaller than this
 max_deadzone_speed = 0.2; % [m/s] don't actuate if ascent rate is smaller than this
 max_allowed_error = 1000; % [m] only allow control if altitude error is smaller than this
 delay_time = 500; % [s] time to wait after launch before starting controller
-delay_altitude = target_altitude-max_allowed_error; % [m] altitude to reach before arming
+delay_altitude = max(target_altitude-max_allowed_error,min_altitude_limit); % [m] altitude to reach before arming
 
 % mass properties
-extra_gas_above_reserve = 0.2; % [kg]
+extra_gas_above_reserve = 0.5; % [kg]
 gas_reserve_buffer_above_equilibruim = 0.001; % [kg]
 payload_dry_mass  = 1.427;  % [kg]
 consumable_mass   = 0.5; % [kg]
@@ -104,7 +104,7 @@ parachute_drag_coeff = 1.3;
 
 % hardware limits
 parachute_open_altitude = 18000; % [m]
-mdot_ballast = 0.010; % [kg/s]
+mdot_ballast = 0.0100; % [kg/s]
 mdot_ballast_noise_power = 0.0001; % multiplied against mdot to emulate variability
 mdot_bleed = 0.010; % [kg/s]
 mdot_bleed_noise_power = 0.0001; % multiplied against mdot to emulate variability
