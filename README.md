@@ -5,4 +5,4 @@ Simulink model of the HAB's control logic and flight physics simulation.
 2. Run `configure_simulation.m`
 3. Open `ascent_simulation.slx` in Simulink
 4. (Optionally) Open the _Data Inspector_ to view simulation data
-5. Run the model
+5. Run the model and plot in 3D on a globe with `run_simulation.m`
