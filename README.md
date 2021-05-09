@@ -15,8 +15,12 @@ it for use a lookup table when the model runs. The data is stored in a subdir
 of the current working directory.
 
 ## Dependencies
+For standard atmosphere flight model:
 * MATLAB + Simulink (Designed and tested on R2020a)
-* (Optional) MATLAB Mapping Toolbox for plotting flight path on the globe
+
+For optional flight model using GFS weather data:
+* [NCToolbox](https://github.com/nctoolbox/nctoolbox) for reading GFS grib files. Must be placed adjacent to this repo's directory
+* MATLAB Mapping Toolbox for plotting flight path on the globe
 
 This tools was created as a design aid and exploration tool to support
 the control system design for [Brickworks/mfc_apps](https://github.com/Brickworks/mfc-apps/tree/main/control_apps).
