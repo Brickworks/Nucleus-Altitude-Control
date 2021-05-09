@@ -67,10 +67,10 @@
 %   Kb                          Gain applied to the anti-windup
 %                               back-calculation.
 % -------------------------------------------------------------------------
-path_to_nctoolbox = '../nctoolbox-1.1.0';
+path_to_nctoolbox = '../nctoolbox-1.1.0'; % github.com/nctoolbox/nctoolbox
 path_to_balloon_library = './balloon_library';
 dt = 0.01; % [s] simulation step time
-use_std_atmo = false; % if true, use COESA. else retrieve weather from GFS.
+use_std_atmo = true; % if true, use COESA. else retrieve weather from GFS.
 
 % start location: Reno, NV
 initial_latitude = 39.5296; % [deg] initial latitude
